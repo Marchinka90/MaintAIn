@@ -1,0 +1,35 @@
+---
+description: MaintAIn project overview — purpose, goals, and core feature set
+alwaysApply: true
+---
+
+# MaintAIn — Project Overview
+
+MaintAIn is a **lightweight, personal web application** for managing recurring apartment/home maintenance tasks. The goal is to prevent forgotten maintenance activities by centralizing all recurring responsibilities in one intuitive system.
+
+## Core Purpose
+
+- Replace scattered notes and calendar reminders with a structured, reliable tracker
+- Automatically calculate due dates and highlight overdue or upcoming tasks
+- Maintain a full history of completed maintenance activities
+
+## Key User Capabilities
+
+- **Create** recurring tasks with: title, description, category, frequency (weekly / monthly / yearly), and interval (e.g., every 3 months)
+- **View** all active tasks with clear status labels: Overdue, Due Soon, Upcoming
+- **Edit** tasks (frequency, category, description, etc.)
+- **Deactivate or delete** tasks no longer needed
+- **Mark tasks as completed** — system auto-generates the next due date
+- **Add notes and cost info** when completing a task
+- **View completion history** per task
+- **Filter** tasks by category, frequency, or status
+- **Dashboard** showing: overdue count, due-soon count, completed this month, total active tasks
+- **Navigate** between Dashboard and Task Management views
+- **Export** task data (optional enhancement)
+
+## Design Principles
+
+- Clarity and predictability over complexity
+- Responsive, clean, user-friendly interface
+- Lightweight personal tool — not a full property management platform
+- Users should feel confident no recurring task will be forgotten

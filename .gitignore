@@ -1,0 +1,19 @@
+node_modules
+dist
+.DS_Store
+
+# local env files
+.env
+.env.*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Editor / tooling
+.vscode
+.idea
+
+# Backend
+backend/node_modules
+backend/dist
+backend/.env
