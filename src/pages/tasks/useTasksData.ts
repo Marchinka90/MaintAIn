@@ -1,0 +1,191 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../auth/AuthContext'
+
+export type TaskItem = {
+  _id: string
+  title: string
+  description?: string
+  category?: string
+  active: boolean
+  frequencyUnit?: 'weekly' | 'monthly' | 'yearly'
+  frequencyInterval?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type TaskDraft = {
+  title: string
+  description: string
+  category: string
+  active: boolean
+}
+
+type TasksResponse = { items: TaskItem[] }
+type TaskResponse = { item: TaskItem }
+type CategoriesResponse = { items: string[] }
+
+export function useTasksData(options?: { loadTasks?: boolean }) {
+  const { authFetch } = useAuth()
+  const loadTasksOnMount = options?.loadTasks ?? true
+
+  const [items, setItems] = useState<TaskItem[]>([])
+  const [loading, setLoading] = useState(loadTasksOnMount)
+  const [error, setError] = useState<string | null>(null)
+
+  const [categories, setCategories] = useState<string[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [categoriesError, setCategoriesError] = useState<string | null>(null)
+
+  const categoriesReady = !categoriesLoading && categories.length > 0
+
+  const normalizeCategory = useCallback(
+    (value: string) => {
+      if (!categoriesReady) return value || 'Other'
+      if (categories.includes(value)) return value
+      if (categories.includes('Other')) return 'Other'
+      return categories[0] ?? 'Other'
+    },
+    [categories, categoriesReady],
+  )
+
+  const loadTasks = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await authFetch('/api/tasks')
+      const data = (await res.json()) as TasksResponse
+      if (!res.ok) throw new Error('Failed to load tasks')
+      setItems(Array.isArray(data.items) ? data.items : [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load tasks')
+    } finally {
+      setLoading(false)
+    }
+  }, [authFetch])
+
+  useEffect(() => {
+    if (!loadTasksOnMount) return
+    void loadTasks()
+  }, [loadTasks, loadTasksOnMount])
+
+  useEffect(() => {
+    let cancelled = false
+
+    setCategoriesLoading(true)
+    setCategoriesError(null)
+    fetch('/api/task-categories')
+      .then(async (res) => {
+        const data = (await res.json()) as CategoriesResponse
+        if (cancelled) return
+        if (!res.ok) throw new Error('Failed to load categories')
+        setCategories(Array.isArray(data.items) ? data.items : [])
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setCategoriesError(e instanceof Error ? e.message : 'Failed to load categories')
+        setCategories([])
+      })
+      .finally(() => {
+        if (cancelled) return
+        setCategoriesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const createTask = useCallback(
+    async (draft: TaskDraft) => {
+      setError(null)
+      const res = await authFetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: draft.title,
+          description: draft.description || undefined,
+          category: normalizeCategory(draft.category),
+          active: draft.active,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to create task')
+      }
+      const data = (await res.json()) as TaskResponse
+      return data.item
+    },
+    [authFetch, normalizeCategory],
+  )
+
+  const updateTask = useCallback(
+    async (id: string, draft: TaskDraft) => {
+      setError(null)
+      const res = await authFetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: draft.title,
+          description: draft.description || '',
+          category: normalizeCategory(draft.category),
+          active: draft.active,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to update task')
+      }
+      const data = (await res.json()) as TaskResponse
+      return data.item
+    },
+    [authFetch, normalizeCategory],
+  )
+
+  const deleteTask = useCallback(
+    async (id: string) => {
+      setError(null)
+      const res = await authFetch(`/api/tasks/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to delete task')
+      }
+    },
+    [authFetch],
+  )
+
+  const value = useMemo(
+    () => ({
+      items,
+      setItems,
+      loading,
+      error,
+      setError,
+      categories,
+      categoriesReady,
+      categoriesLoading,
+      categoriesError,
+      normalizeCategory,
+      loadTasks,
+      createTask,
+      updateTask,
+      deleteTask,
+    }),
+    [
+      items,
+      loading,
+      error,
+      categories,
+      categoriesReady,
+      categoriesLoading,
+      categoriesError,
+      normalizeCategory,
+      loadTasks,
+      createTask,
+      updateTask,
+      deleteTask,
+    ],
+  )
+
+  return value
+}
+
