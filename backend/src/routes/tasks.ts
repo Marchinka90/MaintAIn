@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import mongoose from 'mongoose'
 import { Task } from '../models/Task.js'
+import { TASK_CATEGORIES, isValidTaskCategory } from '../constants/taskCategories.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const tasksRouter = Router()
 
@@ -21,10 +23,13 @@ function parseId(id: string) {
   return new mongoose.Types.ObjectId(id)
 }
 
+tasksRouter.use(requireAuth)
+
 tasksRouter.get('/', async (req, res) => {
   const { active, category } = req.query
 
   const filter: Record<string, unknown> = {}
+  filter.ownerUserId = req.user!.userId
   if (active === 'true') filter.active = true
   if (active === 'false') filter.active = false
   if (typeof category === 'string' && category.trim()) filter.category = category.trim()
@@ -41,7 +46,12 @@ tasksRouter.post('/', async (req, res) => {
   }
 
   if (!isOptionalString(body.description)) return res.status(400).json({ error: 'description must be a string' })
-  if (!isOptionalString(body.category)) return res.status(400).json({ error: 'category must be a string' })
+  if (!isNonEmptyString(body.category)) {
+    return res.status(400).json({ error: `category is required (one of: ${TASK_CATEGORIES.join(', ')})` })
+  }
+  if (!isValidTaskCategory(body.category)) {
+    return res.status(400).json({ error: `category must be one of: ${TASK_CATEGORIES.join(', ')}` })
+  }
 
   const frequencyUnit = body.frequencyUnit
   if (
@@ -63,9 +73,10 @@ tasksRouter.post('/', async (req, res) => {
   }
 
   const task = await Task.create({
+    ownerUserId: req.user!.userId,
     title: body.title.trim(),
     description: typeof body.description === 'string' ? body.description : undefined,
-    category: typeof body.category === 'string' ? body.category : undefined,
+    category: body.category,
     frequencyUnit: frequencyUnit as 'weekly' | 'monthly' | 'yearly' | undefined,
     frequencyInterval: body.frequencyInterval as number | undefined,
     active: typeof active === 'boolean' ? active : undefined,
@@ -78,7 +89,7 @@ tasksRouter.get('/:id', async (req, res) => {
   const id = parseId(req.params.id)
   if (!id) return res.status(400).json({ error: 'invalid id' })
 
-  const task = await Task.findById(id).lean()
+  const task = await Task.findOne({ _id: id, ownerUserId: req.user!.userId }).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
 
   res.json({ item: task })
@@ -102,7 +113,12 @@ tasksRouter.patch('/:id', async (req, res) => {
   }
 
   if (body.category !== undefined) {
-    if (typeof body.category !== 'string') return res.status(400).json({ error: 'category must be string' })
+    if (!isNonEmptyString(body.category)) {
+      return res.status(400).json({ error: `category is required (one of: ${TASK_CATEGORIES.join(', ')})` })
+    }
+    if (!isValidTaskCategory(body.category)) {
+      return res.status(400).json({ error: `category must be one of: ${TASK_CATEGORIES.join(', ')}` })
+    }
     update.category = body.category
   }
 
@@ -126,7 +142,10 @@ tasksRouter.patch('/:id', async (req, res) => {
     update.active = body.active
   }
 
-  const task = await Task.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean()
+  const task = await Task.findOneAndUpdate({ _id: id, ownerUserId: req.user!.userId }, update, {
+    new: true,
+    runValidators: true,
+  }).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
 
   res.json({ item: task })
@@ -136,7 +155,7 @@ tasksRouter.delete('/:id', async (req, res) => {
   const id = parseId(req.params.id)
   if (!id) return res.status(400).json({ error: 'invalid id' })
 
-  const deleted = await Task.findByIdAndDelete(id).lean()
+  const deleted = await Task.findOneAndDelete({ _id: id, ownerUserId: req.user!.userId }).lean()
   if (!deleted) return res.status(404).json({ error: 'not found' })
 
   res.json({ ok: true })

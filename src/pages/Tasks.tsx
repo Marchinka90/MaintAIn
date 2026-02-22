@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { TextareaField, TextField } from '../components/Field'
+import { useAuth } from '../auth/AuthContext'
 
 export type TaskItem = {
   _id: string
@@ -17,6 +18,7 @@ export type TaskItem = {
 
 type TasksResponse = { items: TaskItem[] }
 type TaskResponse = { item: TaskItem }
+type CategoriesResponse = { items: string[] }
 
 type Draft = {
   title: string
@@ -26,14 +28,18 @@ type Draft = {
 }
 
 function emptyDraft(): Draft {
-  return { title: '', description: '', category: '', active: true }
+  return { title: '', description: '', category: 'Other', active: true }
 }
 
 export function Tasks(props: { onBack: () => void }) {
+  const { authFetch, logout, user } = useAuth()
   const [items, setItems] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createTitleError, setCreateTitleError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<string[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [categoriesError, setCategoriesError] = useState<string | null>(null)
 
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [submitting, setSubmitting] = useState(false)
@@ -43,12 +49,20 @@ export function Tasks(props: { onBack: () => void }) {
   const [editTitleError, setEditTitleError] = useState<string | null>(null)
 
   const activeCount = useMemo(() => items.filter((t) => t.active).length, [items])
+  const categoriesReady = !categoriesLoading && categories.length > 0
+
+  function normalizeCategory(value: string) {
+    if (!categoriesReady) return value || 'Other'
+    if (categories.includes(value)) return value
+    if (categories.includes('Other')) return 'Other'
+    return categories[0] ?? 'Other'
+  }
 
   async function load() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/tasks')
+      const res = await authFetch('/api/tasks')
       const data = (await res.json()) as TasksResponse
       if (!res.ok) throw new Error('Failed to load tasks')
       setItems(data.items)
@@ -63,23 +77,61 @@ export function Tasks(props: { onBack: () => void }) {
     void load()
   }, [])
 
+  useEffect(() => {
+    if (!categoriesReady) return
+    setDraft((d) => ({ ...d, category: normalizeCategory(d.category) }))
+    setEditDraft((d) => ({ ...d, category: normalizeCategory(d.category) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesReady, categories.join('|')])
+
+  useEffect(() => {
+    let cancelled = false
+
+    setCategoriesLoading(true)
+    setCategoriesError(null)
+    fetch('/api/task-categories')
+      .then(async (res) => {
+        const data = (await res.json()) as CategoriesResponse
+        if (cancelled) return
+        if (!res.ok) throw new Error('Failed to load categories')
+        setCategories(Array.isArray(data.items) ? data.items : [])
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setCategoriesError(e instanceof Error ? e.message : 'Failed to load categories')
+        setCategories([])
+      })
+      .finally(() => {
+        if (cancelled) return
+        setCategoriesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   async function createTask() {
     setCreateTitleError(null)
     if (!draft.title.trim()) {
       setCreateTitleError('Title is required')
       return
     }
+    if (!categoriesReady) {
+      setError('Categories are still loading. Please try again in a moment.')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/tasks', {
+      const res = await authFetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: draft.title,
           description: draft.description || undefined,
-          category: draft.category || undefined,
+          category: normalizeCategory(draft.category),
           active: draft.active,
         }),
       })
@@ -103,7 +155,7 @@ export function Tasks(props: { onBack: () => void }) {
     setEditDraft({
       title: task.title ?? '',
       description: task.description ?? '',
-      category: task.category ?? '',
+      category: normalizeCategory(task.category ?? 'Other'),
       active: task.active ?? true,
     })
   }
@@ -120,16 +172,20 @@ export function Tasks(props: { onBack: () => void }) {
       setEditTitleError('Title is required')
       return
     }
+    if (!categoriesReady) {
+      setError('Categories are still loading. Please try again in a moment.')
+      return
+    }
 
     setError(null)
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await authFetch(`/api/tasks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: editDraft.title,
           description: editDraft.description || '',
-          category: editDraft.category || '',
+          category: normalizeCategory(editDraft.category),
           active: editDraft.active,
         }),
       })
@@ -152,7 +208,7 @@ export function Tasks(props: { onBack: () => void }) {
 
     setError(null)
     try {
-      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
+      const res = await authFetch(`/api/tasks/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(data?.error ?? 'Failed to delete task')
@@ -175,13 +231,18 @@ export function Tasks(props: { onBack: () => void }) {
           <div className="min-w-0 text-center">
             <h2 className="text-xl font-semibold tracking-tight">Tasks</h2>
             <p className="mt-1 text-xs text-white/60">
-              {items.length} total · {activeCount} active
+              {items.length} total · {activeCount} active{user ? ` · ${user.username}` : ''}
             </p>
           </div>
 
-          <Button type="button" variant="ghost" onClick={() => void load()} aria-label="Refresh tasks">
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" onClick={() => void load()} aria-label="Refresh tasks">
+              Refresh
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => void logout()} aria-label="Log out">
+              Logout
+            </Button>
+          </div>
         </header>
 
         <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
@@ -207,14 +268,35 @@ export function Tasks(props: { onBack: () => void }) {
                 autoComplete="off"
               />
               <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
-                <TextField
-                  label="Category"
-                  name="category"
-                  value={draft.category}
-                  onChange={(value) => setDraft((d) => ({ ...d, category: value }))}
-                  placeholder="HVAC"
-                  autoComplete="off"
-                />
+                <div className="grid gap-1.5">
+                  <label htmlFor="category" className="text-xs font-medium text-white/70">
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={normalizeCategory(draft.category)}
+                    onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                    disabled={!categoriesReady}
+                    required
+                    className={[
+                      'w-full rounded-xl border px-3 py-2 text-sm text-(--fg)',
+                      'border-white/15 bg-black/15',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)',
+                    ].join(' ')}
+                  >
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  {categoriesError ? (
+                    <p className="text-xs text-rose-200" role="alert">
+                      {categoriesError}
+                    </p>
+                  ) : null}
+                </div>
 
                 <label className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/10 px-3 py-2 text-sm">
                   <input
@@ -229,7 +311,12 @@ export function Tasks(props: { onBack: () => void }) {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button type="button" variant="primary" disabled={submitting} onClick={() => void createTask()}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={submitting || !categoriesReady}
+                  onClick={() => void createTask()}
+                >
                   {submitting ? 'Creating…' : 'Create'}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setDraft(emptyDraft())}>
@@ -297,16 +384,38 @@ export function Tasks(props: { onBack: () => void }) {
                           autoComplete="off"
                           rows={3}
                         />
-                        <TextField
-                          label="Category"
-                          name="editCategory"
-                          value={editDraft.category}
-                          onChange={(value) => setEditDraft((d) => ({ ...d, category: value }))}
-                          autoComplete="off"
-                        />
+                        <div className="grid gap-1.5">
+                          <label htmlFor="editCategory" className="text-xs font-medium text-white/70">
+                            Category
+                          </label>
+                          <select
+                            id="editCategory"
+                            name="editCategory"
+                            value={normalizeCategory(editDraft.category)}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))}
+                            disabled={!categoriesReady}
+                            required
+                            className={[
+                              'w-full rounded-xl border px-3 py-2 text-sm text-(--fg)',
+                              'border-white/15 bg-black/15',
+                              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)',
+                            ].join(' ')}
+                          >
+                            {categories.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
                         <div className="flex flex-wrap gap-2 pt-1">
-                          <Button type="button" variant="primary" onClick={() => void saveEdit(t._id)}>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            disabled={!categoriesReady}
+                            onClick={() => void saveEdit(t._id)}
+                          >
                             Save
                           </Button>
                           <Button type="button" variant="ghost" onClick={cancelEdit}>

@@ -29,7 +29,7 @@ function ErrorText({ id, error }: { id: string; error: string }) {
   )
 }
 
-export function TextField(props: BaseProps & { type?: 'text' }) {
+export function TextField(props: BaseProps & { type?: 'text' | 'password' }) {
   const reactId = useId()
   const id = `${props.name}-${reactId}`
   const describedById = props.error ? `${id}-error` : undefined
