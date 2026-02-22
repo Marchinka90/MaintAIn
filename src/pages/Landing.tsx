@@ -8,7 +8,7 @@ type HealthResponse = {
   }
 }
 
-export function Landing() {
+export function Landing(props: { onGetStarted?: () => void }) {
   const [apiStatus, setApiStatus] = useState<'checking' | 'up' | 'down'>('checking')
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export function Landing() {
         </div>
 
         <div className="actions">
-          <button type="button" className="primaryBtn">
+          <button type="button" className="primaryBtn" onClick={props.onGetStarted}>
             Get started
           </button>
           <a

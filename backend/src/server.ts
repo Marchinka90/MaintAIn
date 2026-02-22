@@ -2,6 +2,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import mongoose from 'mongoose'
+import { tasksRouter } from './routes/tasks.js'
 
 dotenv.config()
 
@@ -29,6 +30,8 @@ app.get('/api/health', (_req, res) => {
     },
   })
 })
+
+app.use('/api/tasks', tasksRouter)
 
 app.listen(PORT, () => {
   console.log(`Backend listening on http://127.0.0.1:${PORT}`)
