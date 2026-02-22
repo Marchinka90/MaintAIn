@@ -15,7 +15,7 @@ type BaseProps = {
 
 function Label({ id, label }: { id: string; label: string }) {
   return (
-    <label htmlFor={id} className="text-xs font-medium text-white/70">
+    <label htmlFor={id} className="text-sm text-slate-400">
       {label}
     </label>
   )
@@ -23,7 +23,7 @@ function Label({ id, label }: { id: string; label: string }) {
 
 function ErrorText({ id, error }: { id: string; error: string }) {
   return (
-    <p id={id} className="text-xs text-rose-200">
+    <p id={id} className="text-sm text-rose-300">
       {error}
     </p>
   )
@@ -35,7 +35,7 @@ export function TextField(props: BaseProps & { type?: 'text' | 'password' }) {
   const describedById = props.error ? `${id}-error` : undefined
 
   return (
-    <div className="grid gap-1.5">
+    <div className="space-y-1">
       <Label id={id} label={props.label} />
       <input
         id={id}
@@ -50,13 +50,13 @@ export function TextField(props: BaseProps & { type?: 'text' | 'password' }) {
         aria-invalid={Boolean(props.error) || undefined}
         aria-describedby={describedById}
         className={[
-          'w-full rounded-xl border px-3 py-2 text-sm text-(--fg)',
-          'border-white/15 bg-black/15 placeholder:text-white/35',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)',
-          props.error ? 'border-rose-400/50' : '',
+          'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+          'border-slate-700 placeholder:text-slate-500',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+          props.error ? 'border-rose-500/40' : '',
         ].join(' ')}
       />
-      {props.hint ? <div className="text-xs text-white/55">{props.hint}</div> : null}
+      {props.hint ? <div className="text-sm text-slate-400">{props.hint}</div> : null}
       {props.error ? <ErrorText id={`${id}-error`} error={props.error} /> : null}
     </div>
   )
@@ -68,7 +68,7 @@ export function TextareaField(props: BaseProps & { rows?: number }) {
   const describedById = props.error ? `${id}-error` : undefined
 
   return (
-    <div className="grid gap-1.5">
+    <div className="space-y-1">
       <Label id={id} label={props.label} />
       <textarea
         id={id}
@@ -83,13 +83,13 @@ export function TextareaField(props: BaseProps & { rows?: number }) {
         aria-invalid={Boolean(props.error) || undefined}
         aria-describedby={describedById}
         className={[
-          'w-full resize-y rounded-xl border px-3 py-2 text-sm text-(--fg)',
-          'border-white/15 bg-black/15 placeholder:text-white/35',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)',
-          props.error ? 'border-rose-400/50' : '',
+          'w-full resize-y rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+          'border-slate-700 placeholder:text-slate-500',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+          props.error ? 'border-rose-500/40' : '',
         ].join(' ')}
       />
-      {props.hint ? <div className="text-xs text-white/55">{props.hint}</div> : null}
+      {props.hint ? <div className="text-sm text-slate-400">{props.hint}</div> : null}
       {props.error ? <ErrorText id={`${id}-error`} error={props.error} /> : null}
     </div>
   )

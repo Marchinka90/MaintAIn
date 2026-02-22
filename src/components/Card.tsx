@@ -9,7 +9,8 @@ export function Card({
     <div
       {...props}
       className={[
-        'rounded-2xl border border-white/15 bg-white/5 shadow-[0_24px_80px_var(--shadow)] backdrop-blur',
+        'rounded-2xl border border-slate-800 bg-slate-900/60 shadow-lg shadow-black/20 backdrop-blur',
+        'transition-colors duration-200 hover:border-slate-700',
         className,
       ].join(' ')}
     >
