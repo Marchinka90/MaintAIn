@@ -1,8 +1,8 @@
-import { Button } from '../components/Button'
-import { Card } from '../components/Card'
-import { useAuth } from '../auth/AuthContext'
+import { Button } from '../../components/Button'
+import { Card } from '../../components/Card'
+import { useAuth } from '../../auth/AuthContext'
 
-export function Landing(props: { onGetStarted?: () => void }) {
+export function LandingPage(props: { onGetStarted?: () => void }) {
   const { user } = useAuth()
 
   const primaryCtaLabel = user ? 'Open Dashboard' : 'Sign in'
@@ -23,8 +23,8 @@ export function Landing(props: { onGetStarted?: () => void }) {
                 Maint<span className="text-indigo-400">AI</span>n
               </h1>
               <p className="max-w-xl text-lg text-slate-300">
-                Track recurring apartment maintenance tasks in one place, so you always know what’s overdue, what’s next,
-                and what’s already done.
+                Track recurring apartment maintenance tasks in one place, so you always know what’s overdue, what’s next, and what’s already
+                done.
               </p>
               <p className="max-w-xl text-sm text-slate-400">
                 Create tasks, organize by category, and keep a reliable routine — without juggling notes and reminders.
@@ -48,18 +48,16 @@ export function Landing(props: { onGetStarted?: () => void }) {
               </div>
 
               <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                {[
-                  'Track recurring tasks (monthly/quarterly/yearly)',
-                  'See what’s overdue or due soon',
-                  'Log completions and keep history',
-                ].map((text) => (
-                  <li key={text} className="flex gap-3">
-                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs text-indigo-300">
-                      ✓
-                    </span>
-                    <span className="min-w-0">{text}</span>
-                  </li>
-                ))}
+                {['Track recurring tasks (monthly/quarterly/yearly)', 'See what’s overdue or due soon', 'Log completions and keep history'].map(
+                  (text) => (
+                    <li key={text} className="flex gap-3">
+                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs text-indigo-300">
+                        ✓
+                      </span>
+                      <span className="min-w-0">{text}</span>
+                    </li>
+                  ),
+                )}
               </ul>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -84,3 +82,4 @@ export function Landing(props: { onGetStarted?: () => void }) {
     </main>
   )
 }
+

@@ -14,6 +14,7 @@ function navLinkClassName(isActive: boolean) {
 export function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const selectedCategory = new URLSearchParams(location.search).get('category')
 
   function setParam(next: Record<string, string | null | undefined>) {
     const params = new URLSearchParams(location.search)
@@ -35,19 +36,19 @@ export function Sidebar() {
 
       <nav className="px-4">
         <div className="space-y-1">
-          <NavLink to="/tasks?view=dashboard" className={({ isActive }) => navLinkClassName(isActive)}>
+          <NavLink to="/dashboard" className={({ isActive }) => navLinkClassName(isActive)}>
             <span className="h-2 w-2 rounded-full bg-indigo-400" aria-hidden="true" />
             Dashboard
           </NavLink>
-          <NavLink to="/tasks?view=all" className={({ isActive }) => navLinkClassName(isActive)}>
+          <NavLink to="/tasks" className={({ isActive }) => navLinkClassName(isActive)}>
             <span className="h-2 w-2 rounded-full bg-sky-400" aria-hidden="true" />
             All Tasks
           </NavLink>
-          <NavLink to="/tasks?view=all&active=true&status=overdue" className={({ isActive }) => navLinkClassName(isActive)}>
+          <NavLink to="/tasks?status=overdue" className={({ isActive }) => navLinkClassName(isActive)}>
             <span className="h-2 w-2 rounded-full bg-rose-400" aria-hidden="true" />
             Overdue
           </NavLink>
-          <NavLink to="/tasks?view=all&active=true&status=dueSoon" className={({ isActive }) => navLinkClassName(isActive)}>
+          <NavLink to="/tasks?status=dueSoon" className={({ isActive }) => navLinkClassName(isActive)}>
             <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />
             Due Soon
           </NavLink>
@@ -57,22 +58,36 @@ export function Sidebar() {
       <div className="mt-5 border-t border-slate-800 px-4 py-5">
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-300/80">Quick filters</div>
         <div className="mt-3 space-y-2">
-          {QUICK_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="flex w-full items-center justify-between rounded-xl bg-slate-800/70 px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-800"
-              onClick={() => setParam({ view: 'all', category: c })}
-            >
-              <span className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-slate-400" aria-hidden="true" />
-                {c}
-              </span>
-              <span className="text-slate-300/70" aria-hidden="true">
-                →
-              </span>
-            </button>
-          ))}
+          {QUICK_CATEGORIES.map((c) => {
+            const isSelected = selectedCategory === c
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={isSelected}
+                className={[
+                  'flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-left text-sm',
+                  'transition-colors duration-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
+                  isSelected
+                    ? 'bg-slate-700 text-white'
+                    : 'bg-slate-800/70 text-slate-100 hover:bg-slate-700 hover:text-white',
+                ].join(' ')}
+                onClick={() => setParam({ view: null, category: c })}
+              >
+                <span className="flex items-center gap-3">
+                  <span
+                    className={['h-2 w-2 rounded-full', isSelected ? 'bg-indigo-300' : 'bg-slate-400'].join(' ')}
+                    aria-hidden="true"
+                  />
+                  {c}
+                </span>
+                <span className={['text-slate-300/70', isSelected ? 'text-white/80' : ''].join(' ')} aria-hidden="true">
+                  →
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </aside>

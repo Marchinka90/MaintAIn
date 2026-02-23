@@ -21,6 +21,16 @@ function computeOverdueAndDueSoon(items: { active: boolean; nextDueDate?: string
   return { overdue, dueSoon }
 }
 
+type StatusUi = '' | 'overdue' | 'dueSoon' | 'upcoming' | 'inactive'
+
+function statusUiFromParams(params: URLSearchParams): StatusUi {
+  const active = params.get('active')
+  const status = params.get('status')
+  if (active === 'false') return 'inactive'
+  if (status === 'overdue' || status === 'dueSoon' || status === 'upcoming') return status
+  return ''
+}
+
 export function TasksListPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -40,82 +50,67 @@ export function TasksListPage() {
   const activeCount = useMemo(() => items.filter((t) => t.active).length, [items])
   const { overdue: overdueCount, dueSoon: dueSoonCount } = useMemo(() => computeOverdueAndDueSoon(items, 7), [items])
 
-  const view = searchParams.get('view')
   const [q, setQ] = useState(searchParams.get('q') ?? '')
   const [category, setCategory] = useState(searchParams.get('category') ?? '')
-  const [active, setActive] = useState(searchParams.get('active') ?? '')
-  const [status, setStatus] = useState(searchParams.get('status') ?? '')
+  const [statusUi, setStatusUi] = useState<StatusUi>(() => statusUiFromParams(searchParams))
 
   const qDebounceRef = useRef<number | null>(null)
   const suppressParamsLoadRef = useRef(false)
 
   useEffect(() => {
-    if (!searchParams.get('view')) {
-      const params = new URLSearchParams(searchParams)
-      params.set('view', 'dashboard')
-      setSearchParams(params, { replace: true })
-      return
-    }
-
     const nextQ = searchParams.get('q') ?? ''
     const nextCategory = searchParams.get('category') ?? ''
-    const nextActive = searchParams.get('active') ?? ''
-    const nextStatus = searchParams.get('status') ?? ''
+    const nextStatusUi = statusUiFromParams(searchParams)
 
     // If the URL changed due to in-page controls, avoid double-loading:
     // the handlers already triggered the network request (or will, for debounced search).
     if (suppressParamsLoadRef.current) {
       suppressParamsLoadRef.current = false
     } else {
-      const changed = q !== nextQ || category !== nextCategory || active !== nextActive || status !== nextStatus
+      const changed = q !== nextQ || category !== nextCategory || statusUi !== nextStatusUi
       if (changed) {
-        const { query } = buildQuery({ q: nextQ, category: nextCategory, active: nextActive, status: nextStatus })
+        const { query } = buildQuery({ q: nextQ, category: nextCategory, statusUi: nextStatusUi })
         void loadTasks(query)
       }
     }
 
     if (q !== nextQ) setQ(nextQ)
     if (category !== nextCategory) setCategory(nextCategory)
-    if (active !== nextActive) setActive(nextActive)
-    if (status !== nextStatus) setStatus(nextStatus)
+    if (statusUi !== nextStatusUi) setStatusUi(nextStatusUi)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  function buildQuery(next?: Partial<{ q: string; category: string; active: string; status: string }>): {
+  function buildQuery(next?: Partial<{ q: string; category: string; statusUi: StatusUi }>): {
     query: TasksQuery
     params: URLSearchParams
   } {
     const merged = {
       q,
       category,
-      active,
-      status,
+      statusUi,
       ...next,
     }
 
-    // Enforce backend rule: status applies to active tasks only
-    let enforcedActive = merged.active
-    let enforcedStatus = merged.status
-    if (enforcedActive === 'false') enforcedStatus = ''
-    if (enforcedStatus) enforcedActive = 'true'
-
     const params = new URLSearchParams()
-    params.set('view', view ?? 'dashboard')
     if (merged.q.trim()) params.set('q', merged.q.trim())
     if (merged.category.trim()) params.set('category', merged.category.trim())
-    if (enforcedActive === 'true' || enforcedActive === 'false') params.set('active', enforcedActive)
-    if (enforcedStatus) params.set('status', enforcedStatus)
+    if (merged.statusUi === 'inactive') params.set('active', 'false')
+    else if (merged.statusUi) params.set('status', merged.statusUi)
 
     const query: TasksQuery = {}
     if (merged.q.trim()) query.q = merged.q.trim()
     if (merged.category.trim()) query.category = merged.category.trim()
-    if (enforcedActive === 'true' || enforcedActive === 'false') query.active = enforcedActive as 'true' | 'false'
-    if (enforcedStatus) query.status = enforcedStatus as TasksQuery['status']
+    if (merged.statusUi === 'inactive') query.active = 'false'
+    else if (merged.statusUi) {
+      query.status = merged.statusUi as TasksQuery['status']
+      // backend status filters are defined for active tasks; keep URL clean but send active=true for safety
+      query.active = 'true'
+    }
 
     return { query, params }
   }
 
-  function applyImmediate(next?: Partial<{ q: string; category: string; active: string; status: string }>) {
+  function applyImmediate(next?: Partial<{ q: string; category: string; statusUi: StatusUi }>) {
     if (qDebounceRef.current) {
       window.clearTimeout(qDebounceRef.current)
       qDebounceRef.current = null
@@ -146,33 +141,10 @@ export function TasksListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
-          <div className="text-sm font-medium text-slate-700">Overdue</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-rose-600">{overdueCount}</div>
-          <div className="mt-1 text-sm text-slate-500">Needs attention</div>
-        </Card>
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
-          <div className="text-sm font-medium text-slate-700">Due Soon</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-amber-600">{dueSoonCount}</div>
-          <div className="mt-1 text-sm text-slate-500">Next 7 days</div>
-        </Card>
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
-          <div className="text-sm font-medium text-slate-700">Active Tasks</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{activeCount}</div>
-          <div className="mt-1 text-sm text-slate-500">{items.length} total</div>
-        </Card>
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
-          <div className="text-sm font-medium text-slate-700">Completed</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">0</div>
-          <div className="mt-1 text-sm text-slate-500">This month (placeholder)</div>
-        </Card>
-      </div>
-
       <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">{view === 'all' ? 'All Tasks' : 'Dashboard'} filters</div>
+            <div className="text-sm font-semibold text-slate-900">Filters</div>
             <div className="mt-1 text-sm text-slate-600">Search and narrow down your tasks. Filters persist in the URL.</div>
           </div>
 
@@ -184,9 +156,8 @@ export function TasksListPage() {
               onClick={() => {
                 setQ('')
                 setCategory('')
-                setActive('')
-                setStatus('')
-                applyImmediate({ q: '', category: '', active: '', status: '' })
+                setStatusUi('')
+                applyImmediate({ q: '', category: '', statusUi: '' })
               }}
             >
               Clear filters
@@ -194,7 +165,7 @@ export function TasksListPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1">
             <label htmlFor="taskSearch" className="text-sm font-medium text-slate-700">
               Search
@@ -216,6 +187,33 @@ export function TasksListPage() {
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
               ].join(' ')}
             />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="statusFilter" className="text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              id="statusFilter"
+              name="statusFilter"
+              value={statusUi}
+              onChange={(e) => {
+                const next = e.target.value as StatusUi
+                setStatusUi(next)
+                applyImmediate({ statusUi: next })
+              }}
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+              ].join(' ')}
+            >
+              <option value="">All</option>
+              <option value="overdue">Overdue</option>
+              <option value="dueSoon">Due soon</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
 
           <div className="space-y-1">
@@ -245,61 +243,6 @@ export function TasksListPage() {
                   {c}
                 </option>
               ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="activeFilter" className="text-sm font-medium text-slate-700">
-              Active
-            </label>
-            <select
-              id="activeFilter"
-              name="activeFilter"
-              value={active}
-              onChange={(e) => {
-                const next = e.target.value
-                setActive(next)
-                if (next === 'false') setStatus('')
-                applyImmediate({ active: next, status: next === 'false' ? '' : status })
-              }}
-              className={[
-                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
-                'border-slate-200',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-              ].join(' ')}
-            >
-              <option value="">All</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="statusFilter" className="text-sm font-medium text-slate-700">
-              Status
-            </label>
-            <select
-              id="statusFilter"
-              name="statusFilter"
-              value={status}
-              onChange={(e) => {
-                const next = e.target.value
-                setStatus(next)
-                if (next) setActive('true')
-                applyImmediate({ status: next, active: next ? 'true' : active })
-              }}
-              disabled={active === 'false'}
-              className={[
-                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
-                'border-slate-200',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                active === 'false' ? 'opacity-60' : '',
-              ].join(' ')}
-            >
-              <option value="">All</option>
-              <option value="overdue">Overdue</option>
-              <option value="dueSoon">Due soon</option>
-              <option value="upcoming">Upcoming</option>
             </select>
           </div>
         </div>

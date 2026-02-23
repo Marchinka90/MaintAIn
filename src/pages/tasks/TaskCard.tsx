@@ -41,17 +41,23 @@ function dueBadgeLabel(task: TaskItem, due: DueDelta) {
 export function TaskCard(props: {
   task: TaskItem
   dueSoonDays?: number
-  historyOpen: boolean
-  historyLoading: boolean
+  showHistory?: boolean
+  historyOpen?: boolean
+  historyLoading?: boolean
   historyError?: string | null
   history?: CompletionItem[]
   onComplete: () => void
   onEdit: () => void
   onDelete: () => void
-  onToggleHistory: () => void
+  onToggleHistory?: () => void
 }) {
   const due = computeDueDelta(props.task.nextDueDate, props.dueSoonDays ?? 7)
   const frequency = formatFrequency(props.task.frequencyUnit, props.task.frequencyInterval)
+  const showHistory = props.showHistory ?? true
+  const historyOpen = showHistory ? Boolean(props.historyOpen) : false
+  const historyLoading = showHistory ? Boolean(props.historyLoading) : false
+  const historyError = showHistory ? props.historyError : null
+  const history = showHistory ? props.history : undefined
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-black/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-black/10">
@@ -91,14 +97,11 @@ export function TaskCard(props: {
           >
             Complete
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            tone="light"
-            onClick={props.onToggleHistory}
-          >
-            {props.historyOpen ? 'Hide history' : 'History'}
-          </Button>
+          {showHistory ? (
+            <Button type="button" variant="ghost" tone="light" onClick={props.onToggleHistory}>
+              {historyOpen ? 'Hide history' : 'History'}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -113,26 +116,26 @@ export function TaskCard(props: {
         </div>
       </div>
 
-      {props.historyOpen ? (
+      {showHistory && historyOpen ? (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold text-slate-900">Completion history</div>
-            {props.historyLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
+            {historyLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
           </div>
 
-          {props.historyError ? (
+          {historyError ? (
             <div role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              {props.historyError}
+              {historyError}
             </div>
           ) : null}
 
-          {!props.historyLoading && !props.historyError && (!props.history || props.history.length === 0) ? (
+          {!historyLoading && !historyError && (!history || history.length === 0) ? (
             <div className="mt-3 text-sm text-slate-600">No completions yet.</div>
           ) : null}
 
-          {!props.historyLoading && !props.historyError && props.history && props.history.length > 0 ? (
+          {!historyLoading && !historyError && history && history.length > 0 ? (
             <ul className="mt-3 space-y-3">
-              {props.history.map((c) => (
+              {history.map((c) => (
                 <li key={c._id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-900">{formatDateTime(c.completedAt)}</div>

@@ -20,6 +20,7 @@ export function Topbar(props: { title: string; onLogout: () => void }) {
           type="button"
           variant="ghost"
           tone="light"
+          className="active:translate-y-px hover:shadow-sm hover:shadow-black/10"
           onClick={props.onLogout}
         >
           Logout
