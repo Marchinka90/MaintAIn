@@ -12,7 +12,7 @@ function emptyDraft(): TaskDraft {
   return {
     title: '',
     description: '',
-    category: 'Other',
+    category: 'Bills',
     frequencyUnit: 'monthly',
     frequencyInterval: 1,
     startDate: `${yyyy}-${mm}-${dd}`,

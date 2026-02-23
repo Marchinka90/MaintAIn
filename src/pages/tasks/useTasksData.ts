@@ -42,6 +42,14 @@ export type CompletionItem = {
 type CompletionsResponse = { items: CompletionItem[] }
 type CompleteResponse = { task: TaskItem; completion: CompletionItem }
 
+export type TasksQuery = {
+  q?: string
+  category?: string
+  active?: 'true' | 'false'
+  status?: 'overdue' | 'dueSoon' | 'upcoming'
+  dueSoonDays?: number
+}
+
 export function useTasksData(options?: { loadTasks?: boolean }) {
   const { authFetch } = useAuth()
   const loadTasksOnMount = options?.loadTasks ?? true
@@ -66,11 +74,21 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
     [categories, categoriesReady],
   )
 
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async (query?: TasksQuery) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await authFetch('/api/tasks')
+      const qs = new URLSearchParams()
+      if (query?.q) qs.set('q', query.q)
+      if (query?.category) qs.set('category', query.category)
+      if (query?.active) qs.set('active', query.active)
+      if (query?.status) qs.set('status', query.status)
+      if (typeof query?.dueSoonDays === 'number' && Number.isFinite(query.dueSoonDays)) {
+        qs.set('dueSoonDays', String(Math.floor(query.dueSoonDays)))
+      }
+
+      const url = qs.size ? `/api/tasks?${qs.toString()}` : '/api/tasks'
+      const res = await authFetch(url)
       const data = (await res.json()) as TasksResponse
       if (!res.ok) throw new Error('Failed to load tasks')
       setItems(Array.isArray(data.items) ? data.items : [])
