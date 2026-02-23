@@ -38,7 +38,9 @@ export function AppLayout() {
               <Topbar
                 title={title}
                 onLogout={() => {
-                  void logout().then(() => navigate('/'))
+                  // Navigate first so the auth guard doesn't bounce to /login mid-logout.
+                  navigate('/', { replace: true })
+                  void logout()
                 }}
               />
 
