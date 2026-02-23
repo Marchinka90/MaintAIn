@@ -2,6 +2,52 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import type { TaskItem } from './useTasksData'
 
+function formatDate(value?: string) {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+}
+
+function formatFrequency(unit?: TaskItem['frequencyUnit'], interval?: number) {
+  const u = unit ?? 'monthly'
+  const n = typeof interval === 'number' && Number.isFinite(interval) && interval >= 1 ? interval : 1
+  const label = u === 'weekly' ? 'week' : u === 'yearly' ? 'year' : 'month'
+  return n === 1 ? `Every ${label}` : `Every ${n} ${label}s`
+}
+
+type StatusKind = 'inactive' | 'overdue' | 'dueSoon' | 'upcoming'
+
+function computeStatus(task: TaskItem, dueSoonDays = 7): StatusKind {
+  if (!task.active) return 'inactive'
+  if (!task.nextDueDate) return 'upcoming'
+  const due = new Date(task.nextDueDate).getTime()
+  if (Number.isNaN(due)) return 'upcoming'
+  const now = Date.now()
+  if (due < now) return 'overdue'
+  const soon = now + dueSoonDays * 24 * 60 * 60 * 1000
+  if (due <= soon) return 'dueSoon'
+  return 'upcoming'
+}
+
+function StatusBadge(props: { kind: StatusKind }) {
+  const styles: Record<StatusKind, string> = {
+    inactive: 'border-slate-700 bg-slate-800 text-slate-300',
+    overdue: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
+    dueSoon: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
+    upcoming: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
+  }
+  const label: Record<StatusKind, string> = {
+    inactive: 'Inactive',
+    overdue: 'Overdue',
+    dueSoon: 'Due soon',
+    upcoming: 'Upcoming',
+  }
+  return (
+    <span className={`rounded-full border px-3 py-1 text-xs font-medium ${styles[props.kind]}`}>{label[props.kind]}</span>
+  )
+}
+
 function Badge(props: { kind: 'active' | 'inactive' }) {
   if (props.kind === 'active') {
     return (
@@ -47,6 +93,7 @@ export function TaskList(props: {
   loading: boolean
   onEdit: (id: string) => void
   onDelete: (id: string) => Promise<void>
+  onRefresh?: () => void
 }) {
   return (
     <Card className="p-6">
@@ -55,7 +102,14 @@ export function TaskList(props: {
           <h2 className="text-lg font-medium text-slate-100">Tasks</h2>
           <p className="mt-1 text-sm text-slate-400">Manage and update your maintenance tasks.</p>
         </div>
-        {props.loading ? <span className="text-sm text-slate-400">Loading…</span> : null}
+        <div className="flex items-center gap-2">
+          {props.loading ? <span className="text-sm text-slate-400">Loading…</span> : null}
+          {props.onRefresh ? (
+            <Button type="button" variant="ghost" onClick={props.onRefresh}>
+              Refresh
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-6 space-y-4">
@@ -63,6 +117,7 @@ export function TaskList(props: {
 
         <ul className="grid gap-4">
           {props.items.map((t) => {
+            const status = computeStatus(t, 7)
             return (
               <li
                 key={t._id}
@@ -76,8 +131,15 @@ export function TaskList(props: {
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="text-base font-medium text-slate-100">{t.title}</div>
                       <Badge kind={t.active ? 'active' : 'inactive'} />
+                      <StatusBadge kind={status} />
                     </div>
-                    <div className="mt-2 text-sm text-slate-400">{t.category ? t.category : '—'}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
+                      <span>{t.category ? t.category : '—'}</span>
+                      <span className="text-slate-600">•</span>
+                      <span>Next due: {formatDate(t.nextDueDate)}</span>
+                      <span className="text-slate-600">•</span>
+                      <span>{formatFrequency(t.frequencyUnit, t.frequencyInterval)}</span>
+                    </div>
                     {t.description ? (
                       <div className="mt-3 whitespace-pre-wrap text-sm text-slate-300">{t.description}</div>
                     ) : null}

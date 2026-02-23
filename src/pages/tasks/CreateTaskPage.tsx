@@ -5,7 +5,18 @@ import { CreateTaskCard } from './CreateTaskCard'
 import { useTasksData, type TaskDraft } from './useTasksData'
 
 function emptyDraft(): TaskDraft {
-  return { title: '', description: '', category: 'Other', active: true }
+  const today = new Date()
+  const yyyy = String(today.getFullYear())
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  return {
+    title: '',
+    description: '',
+    category: 'Other',
+    frequencyUnit: 'monthly',
+    frequencyInterval: 1,
+    startDate: `${yyyy}-${mm}-${dd}`,
+  }
 }
 
 export function CreateTaskPage() {
@@ -22,12 +33,24 @@ export function CreateTaskPage() {
 
   const [draft, setDraft] = useState<TaskDraft>(emptyDraft())
   const [titleError, setTitleError] = useState<string | null>(null)
+  const [intervalError, setIntervalError] = useState<string | null>(null)
+  const [startDateError, setStartDateError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit() {
     setTitleError(null)
+    setIntervalError(null)
+    setStartDateError(null)
     if (!draft.title.trim()) {
       setTitleError('Title is required')
+      return
+    }
+    if (!Number.isFinite(draft.frequencyInterval) || draft.frequencyInterval < 1) {
+      setIntervalError('Interval must be at least 1')
+      return
+    }
+    if (!draft.startDate || Number.isNaN(new Date(draft.startDate).getTime())) {
+      setStartDateError('Start date is required')
       return
     }
     if (!categoriesReady) {
@@ -68,6 +91,8 @@ export function CreateTaskPage() {
           onClear={() => setDraft(emptyDraft())}
           submitting={submitting}
           titleError={titleError}
+          intervalError={intervalError}
+          startDateError={startDateError}
           categories={categories}
           categoriesReady={categoriesReady}
           categoriesError={categoriesError}

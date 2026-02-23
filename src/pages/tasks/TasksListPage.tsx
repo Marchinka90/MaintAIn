@@ -26,7 +26,6 @@ export function TasksListPage() {
           dueSoon={dueSoonCount}
           active={activeCount}
           onBack={() => navigate('/')}
-          onRefresh={() => void loadTasks()}
           onLogout={() => void logout().then(() => navigate('/'))}
         />
 
@@ -50,6 +49,7 @@ export function TasksListPage() {
         <TaskList
           items={items}
           loading={loading}
+          onRefresh={() => void loadTasks()}
           onEdit={(id) => navigate(`/tasks/${id}/edit`)}
           onDelete={async (id) => {
             const task = items.find((t) => t._id === id)

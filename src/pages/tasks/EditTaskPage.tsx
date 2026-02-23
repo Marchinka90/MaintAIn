@@ -6,7 +6,19 @@ import { TextareaField, TextField } from '../../components/Field'
 import { useTasksData, type TaskDraft } from './useTasksData'
 
 function emptyDraft(): TaskDraft {
-  return { title: '', description: '', category: 'Other', active: true }
+  const today = new Date()
+  const yyyy = String(today.getFullYear())
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  return {
+    title: '',
+    description: '',
+    category: 'Other',
+    frequencyUnit: 'monthly',
+    frequencyInterval: 1,
+    startDate: `${yyyy}-${mm}-${dd}`,
+    active: true,
+  }
 }
 
 export function EditTaskPage() {
@@ -32,6 +44,8 @@ export function EditTaskPage() {
 
   const [draft, setDraft] = useState<TaskDraft>(emptyDraft())
   const [titleError, setTitleError] = useState<string | null>(null)
+  const [intervalError, setIntervalError] = useState<string | null>(null)
+  const [startDateError, setStartDateError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -40,14 +54,27 @@ export function EditTaskPage() {
       title: task.title ?? '',
       description: task.description ?? '',
       category: normalizeCategory(task.category ?? 'Other'),
+      frequencyUnit: task.frequencyUnit ?? 'monthly',
+      frequencyInterval: task.frequencyInterval ?? 1,
+      startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 10) : emptyDraft().startDate,
       active: task.active ?? true,
     })
   }, [normalizeCategory, task])
 
   async function onSave() {
     setTitleError(null)
+    setIntervalError(null)
+    setStartDateError(null)
     if (!draft.title.trim()) {
       setTitleError('Title is required')
+      return
+    }
+    if (!Number.isFinite(draft.frequencyInterval) || draft.frequencyInterval < 1) {
+      setIntervalError('Interval must be at least 1')
+      return
+    }
+    if (!draft.startDate || Number.isNaN(new Date(draft.startDate).getTime())) {
+      setStartDateError('Start date is required')
       return
     }
     if (!categoriesReady) {
@@ -134,6 +161,93 @@ export function EditTaskPage() {
                 autoComplete="off"
                 rows={3}
               />
+
+              <div className="grid gap-4 md:grid-cols-2 md:items-end">
+                <div className="space-y-1">
+                  <label htmlFor="startDate" className="text-sm text-slate-400">
+                    Start date
+                  </label>
+                  <input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={draft.startDate}
+                    onChange={(e) => setDraft((d) => ({ ...d, startDate: e.target.value }))}
+                    required
+                    className={[
+                      'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                      'border-slate-700',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                      startDateError ? 'border-rose-500/40' : '',
+                    ].join(' ')}
+                  />
+                  {startDateError ? (
+                    <p className="text-sm text-rose-300" role="alert">
+                      {startDateError}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="frequencyUnit" className="text-sm text-slate-400">
+                    Frequency
+                  </label>
+                  <select
+                    id="frequencyUnit"
+                    name="frequencyUnit"
+                    value={draft.frequencyUnit}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, frequencyUnit: e.target.value as TaskDraft['frequencyUnit'] }))
+                    }
+                    required
+                    className={[
+                      'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                      'border-slate-700',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                    ].join(' ')}
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 md:items-end">
+                <div className="space-y-1">
+                  <label htmlFor="frequencyInterval" className="text-sm text-slate-400">
+                    Interval
+                  </label>
+                  <input
+                    id="frequencyInterval"
+                    name="frequencyInterval"
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    value={String(draft.frequencyInterval)}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        frequencyInterval: e.target.value === '' ? 1 : Number(e.target.value),
+                      }))
+                    }
+                    required
+                    className={[
+                      'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                      'border-slate-700',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                      intervalError ? 'border-rose-500/40' : '',
+                    ].join(' ')}
+                  />
+                  {intervalError ? (
+                    <p className="text-sm text-rose-300" role="alert">
+                      {intervalError}
+                    </p>
+                  ) : null}
+                </div>
+                <div />
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2 md:items-end">
                 <div className="space-y-1">

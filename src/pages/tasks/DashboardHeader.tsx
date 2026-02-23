@@ -9,7 +9,6 @@ export function DashboardHeader(props: {
   dueSoon: number
   active: number
   onBack: () => void
-  onRefresh: () => void
   onLogout: () => void
 }) {
   return (
@@ -30,9 +29,6 @@ export function DashboardHeader(props: {
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="ghost" onClick={props.onBack} aria-label="Go to home">
             Home
-          </Button>
-          <Button type="button" variant="ghost" onClick={props.onRefresh} aria-label="Refresh tasks">
-            Refresh
           </Button>
           <Button type="button" variant="ghost" onClick={props.onLogout} aria-label="Log out">
             Logout

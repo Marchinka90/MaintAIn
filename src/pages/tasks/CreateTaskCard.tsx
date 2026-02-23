@@ -6,7 +6,9 @@ export type TaskDraft = {
   title: string
   description: string
   category: string
-  active: boolean
+  frequencyUnit: 'weekly' | 'monthly' | 'yearly'
+  frequencyInterval: number
+  startDate: string
 }
 
 export function CreateTaskCard(props: {
@@ -16,6 +18,8 @@ export function CreateTaskCard(props: {
   onClear: () => void
   submitting: boolean
   titleError: string | null
+  intervalError: string | null
+  startDateError: string | null
   categories: string[]
   categoriesReady: boolean
   categoriesError: string | null
@@ -82,16 +86,89 @@ export function CreateTaskCard(props: {
             ) : null}
           </div>
 
-          <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200">
+          <div className="space-y-1">
+            <label htmlFor="startDate" className="text-sm text-slate-400">
+              Start date
+            </label>
             <input
-              name="active"
-              type="checkbox"
-              checked={props.draft.active}
-              onChange={(e) => props.onDraftChange({ ...props.draft, active: e.target.checked })}
-              className="h-4 w-4 accent-indigo-500"
+              id="startDate"
+              name="startDate"
+              type="date"
+              value={props.draft.startDate}
+              onChange={(e) => props.onDraftChange({ ...props.draft, startDate: e.target.value })}
+              required
+              className={[
+                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                'border-slate-700',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                props.startDateError ? 'border-rose-500/40' : '',
+              ].join(' ')}
             />
-            <span>Active</span>
-          </label>
+            {props.startDateError ? (
+              <p className="text-sm text-rose-300" role="alert">
+                {props.startDateError}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 md:items-end">
+          <div className="space-y-1">
+            <label htmlFor="frequencyUnit" className="text-sm text-slate-400">
+              Frequency
+            </label>
+            <select
+              id="frequencyUnit"
+              name="frequencyUnit"
+              value={props.draft.frequencyUnit}
+              onChange={(e) =>
+                props.onDraftChange({ ...props.draft, frequencyUnit: e.target.value as TaskDraft['frequencyUnit'] })
+              }
+              required
+              className={[
+                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                'border-slate-700',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+              ].join(' ')}
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="frequencyInterval" className="text-sm text-slate-400">
+              Interval
+            </label>
+            <input
+              id="frequencyInterval"
+              name="frequencyInterval"
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={String(props.draft.frequencyInterval)}
+              onChange={(e) =>
+                props.onDraftChange({
+                  ...props.draft,
+                  frequencyInterval: e.target.value === '' ? 1 : Number(e.target.value),
+                })
+              }
+              required
+              className={[
+                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
+                'border-slate-700',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                props.intervalError ? 'border-rose-500/40' : '',
+              ].join(' ')}
+            />
+            {props.intervalError ? (
+              <p className="text-sm text-rose-300" role="alert">
+                {props.intervalError}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">

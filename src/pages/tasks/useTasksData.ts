@@ -9,6 +9,9 @@ export type TaskItem = {
   active: boolean
   frequencyUnit?: 'weekly' | 'monthly' | 'yearly'
   frequencyInterval?: number
+  startDate?: string
+  nextDueDate?: string
+  lastCompletedAt?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -17,7 +20,10 @@ export type TaskDraft = {
   title: string
   description: string
   category: string
-  active: boolean
+  frequencyUnit: 'weekly' | 'monthly' | 'yearly'
+  frequencyInterval: number
+  startDate: string
+  active?: boolean
 }
 
 type TasksResponse = { items: TaskItem[] }
@@ -105,7 +111,9 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
           title: draft.title,
           description: draft.description || undefined,
           category: normalizeCategory(draft.category),
-          active: draft.active,
+          frequencyUnit: draft.frequencyUnit,
+          frequencyInterval: draft.frequencyInterval,
+          startDate: draft.startDate,
         }),
       })
       if (!res.ok) {
@@ -128,6 +136,9 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
           title: draft.title,
           description: draft.description || '',
           category: normalizeCategory(draft.category),
+          frequencyUnit: draft.frequencyUnit,
+          frequencyInterval: draft.frequencyInterval,
+          startDate: draft.startDate,
           active: draft.active,
         }),
       })
