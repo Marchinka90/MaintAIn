@@ -8,14 +8,21 @@ const taskSchema = new mongoose.Schema(
     category: { type: String, required: true, trim: true, maxlength: 60 },
     frequencyUnit: {
       type: String,
-      required: false,
+      required: true,
       enum: ['weekly', 'monthly', 'yearly'],
+      default: 'monthly',
     },
-    frequencyInterval: { type: Number, required: false, min: 1, max: 3650 },
+    frequencyInterval: { type: Number, required: true, default: 1, min: 1, max: 3650 },
+    startDate: { type: Date, required: true, default: Date.now },
+    nextDueDate: { type: Date, required: true, index: true },
+    lastCompletedAt: { type: Date, required: false },
     active: { type: Boolean, required: true, default: true },
   },
   { timestamps: true },
 )
+
+taskSchema.index({ ownerUserId: 1, nextDueDate: 1 })
+taskSchema.index({ ownerUserId: 1, active: 1, category: 1, nextDueDate: 1 })
 
 export type TaskDoc = InferSchemaType<typeof taskSchema> & { _id: mongoose.Types.ObjectId }
 
