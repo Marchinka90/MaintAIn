@@ -276,6 +276,21 @@ tasksRouter.post('/:id/complete', async (req, res) => {
   res.json({ task: task.toObject(), completion: completion.toObject() })
 })
 
+tasksRouter.get('/:id/completions', async (req, res) => {
+  const id = parseId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'invalid id' })
+
+  const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined
+  const limit =
+    typeof limitRaw === 'number' && Number.isFinite(limitRaw) ? Math.min(Math.max(Math.floor(limitRaw), 1), 100) : 20
+
+  const taskExists = await Task.exists({ _id: id, ownerUserId: req.user!.userId })
+  if (!taskExists) return res.status(404).json({ error: 'not found' })
+
+  const completions = await Completion.find({ taskId: id }).sort({ completedAt: -1, createdAt: -1 }).limit(limit).lean()
+  res.json({ items: completions })
+})
+
 tasksRouter.delete('/:id', async (req, res) => {
   const id = parseId(req.params.id)
   if (!id) return res.status(400).json({ error: 'invalid id' })

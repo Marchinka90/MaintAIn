@@ -29,6 +29,18 @@ export type TaskDraft = {
 type TasksResponse = { items: TaskItem[] }
 type TaskResponse = { item: TaskItem }
 type CategoriesResponse = { items: string[] }
+export type CompletionItem = {
+  _id: string
+  taskId?: string
+  completedAt: string
+  note?: string
+  cost?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+type CompletionsResponse = { items: CompletionItem[] }
+type CompleteResponse = { task: TaskItem; completion: CompletionItem }
 
 export function useTasksData(options?: { loadTasks?: boolean }) {
   const { authFetch } = useAuth()
@@ -164,6 +176,38 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
     [authFetch],
   )
 
+  const completeTask = useCallback(
+    async (id: string, payload: { completedAt?: string; note?: string; cost?: number }) => {
+      setError(null)
+      const res = await authFetch(`/api/tasks/${id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to complete task')
+      }
+      const data = (await res.json()) as CompleteResponse
+      return data
+    },
+    [authFetch],
+  )
+
+  const fetchCompletions = useCallback(
+    async (taskId: string, limit = 20) => {
+      setError(null)
+      const res = await authFetch(`/api/tasks/${taskId}/completions?limit=${encodeURIComponent(String(limit))}`)
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to load completion history')
+      }
+      const data = (await res.json()) as CompletionsResponse
+      return Array.isArray(data.items) ? data.items : []
+    },
+    [authFetch],
+  )
+
   const value = useMemo(
     () => ({
       items,
@@ -180,6 +224,8 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
       createTask,
       updateTask,
       deleteTask,
+      completeTask,
+      fetchCompletions,
     }),
     [
       items,
@@ -194,6 +240,8 @@ export function useTasksData(options?: { loadTasks?: boolean }) {
       createTask,
       updateTask,
       deleteTask,
+      completeTask,
+      fetchCompletions,
     ],
   )
 

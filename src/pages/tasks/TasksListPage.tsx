@@ -9,7 +9,7 @@ import { useTasksData } from './useTasksData'
 export function TasksListPage() {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
-  const { items, loading, error, loadTasks, setError, deleteTask } = useTasksData({ loadTasks: true })
+  const { items, loading, error, loadTasks, setError, deleteTask, completeTask, fetchCompletions } = useTasksData({ loadTasks: true })
 
   const activeCount = useMemo(() => items.filter((t) => t.active).length, [items])
   const overdueCount = 0
@@ -50,6 +50,8 @@ export function TasksListPage() {
           items={items}
           loading={loading}
           onRefresh={() => void loadTasks()}
+          onCompleteTask={completeTask}
+          onFetchCompletions={fetchCompletions}
           onEdit={(id) => navigate(`/tasks/${id}/edit`)}
           onDelete={async (id) => {
             const task = items.find((t) => t._id === id)
