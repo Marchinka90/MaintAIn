@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { TextareaField } from '../../components/Field'
 
 type CompleteDraft = {
   completedAtLocal: string
@@ -59,14 +58,20 @@ export function CompleteTaskModal(props: {
         if (e.target === e.currentTarget) props.onClose()
       }}
     >
-      <Card className="w-full max-w-lg p-6">
+      <Card className="w-full max-w-lg rounded-2xl border-slate-200 bg-white p-6 shadow-lg shadow-black/20 backdrop-blur-none hover:border-slate-200">
         <div ref={cardRef}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-lg font-medium text-slate-100">{props.title}</h2>
-            <p className="mt-1 text-sm text-slate-400">Log a completion and automatically bump the next due date.</p>
+            <h2 className="text-lg font-semibold text-slate-900">{props.title}</h2>
+            <p className="mt-1 text-sm text-slate-600">Log a completion and automatically bump the next due date.</p>
           </div>
-          <Button type="button" variant="ghost" onClick={props.onClose} disabled={props.submitting}>
+          <Button
+            type="button"
+            variant="ghost"
+            tone="light"
+            onClick={props.onClose}
+            disabled={props.submitting}
+          >
             Close
           </Button>
         </div>
@@ -74,7 +79,7 @@ export function CompleteTaskModal(props: {
         <div className="mt-6 space-y-4">
           <div className="grid gap-4 md:grid-cols-2 md:items-end">
             <div className="space-y-1">
-              <label htmlFor="completedAtLocal" className="text-sm text-slate-400">
+              <label htmlFor="completedAtLocal" className="text-sm font-medium text-slate-700">
                 Completed at
               </label>
               <input
@@ -84,15 +89,15 @@ export function CompleteTaskModal(props: {
                 value={props.draft.completedAtLocal}
                 onChange={(e) => props.onDraftChange({ ...props.draft, completedAtLocal: e.target.value })}
                 className={[
-                  'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                  'border-slate-700',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                  'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                  'border-slate-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                 ].join(' ')}
               />
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="cost" className="text-sm text-slate-400">
+              <label htmlFor="cost" className="text-sm font-medium text-slate-700">
                 Cost (optional)
               </label>
               <input
@@ -106,40 +111,61 @@ export function CompleteTaskModal(props: {
                 onChange={(e) => props.onDraftChange({ ...props.draft, cost: e.target.value })}
                 aria-invalid={Boolean(costError) || undefined}
                 className={[
-                  'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                  'border-slate-700',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                  costError ? 'border-rose-500/40' : '',
+                  'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                  costError ? 'border-rose-300' : 'border-slate-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                 ].join(' ')}
               />
               {costError ? (
-                <p className="text-sm text-rose-300" role="alert">
+                <p className="text-sm text-rose-700" role="alert">
                   {costError}
                 </p>
               ) : null}
             </div>
           </div>
 
-          <TextareaField
-            label="Note (optional)"
-            name="completionNote"
-            value={props.draft.note}
-            onChange={(value) => props.onDraftChange({ ...props.draft, note: value })}
-            rows={3}
-            placeholder="What did you do?"
-          />
+          <div className="space-y-1">
+            <label htmlFor="completionNote" className="text-sm font-medium text-slate-700">
+              Note (optional)
+            </label>
+            <textarea
+              id="completionNote"
+              name="completionNote"
+              rows={3}
+              value={props.draft.note}
+              onChange={(e) => props.onDraftChange({ ...props.draft, note: e.target.value })}
+              placeholder="What did you do?"
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200 placeholder:text-slate-400',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+              ].join(' ')}
+            />
+          </div>
 
           {props.error ? (
-            <div role="alert" className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {props.error}
             </div>
           ) : null}
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={props.onClose} disabled={props.submitting}>
+            <Button
+              type="button"
+              variant="ghost"
+              tone="light"
+              onClick={props.onClose}
+              disabled={props.submitting}
+            >
               Cancel
             </Button>
-            <Button type="button" variant="primary" onClick={props.onSubmit} disabled={props.submitting || Boolean(costError)}>
+            <Button
+              type="button"
+              variant="primary"
+              tone="light"
+              onClick={props.onSubmit}
+              disabled={props.submitting || Boolean(costError)}
+            >
               {props.submitting ? 'Completing…' : 'Complete'}
             </Button>
           </div>

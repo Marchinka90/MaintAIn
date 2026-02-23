@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { DashboardHeader } from './DashboardHeader'
 import { TaskList } from './TaskList'
 import { useTasksData, type TasksQuery } from './useTasksData'
 
@@ -26,7 +24,6 @@ function computeOverdueAndDueSoon(items: { active: boolean; nextDueDate?: string
 export function TasksListPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { logout, user } = useAuth()
   const {
     items,
     loading,
@@ -43,18 +40,39 @@ export function TasksListPage() {
   const activeCount = useMemo(() => items.filter((t) => t.active).length, [items])
   const { overdue: overdueCount, dueSoon: dueSoonCount } = useMemo(() => computeOverdueAndDueSoon(items, 7), [items])
 
+  const view = searchParams.get('view')
   const [q, setQ] = useState(searchParams.get('q') ?? '')
   const [category, setCategory] = useState(searchParams.get('category') ?? '')
   const [active, setActive] = useState(searchParams.get('active') ?? '')
   const [status, setStatus] = useState(searchParams.get('status') ?? '')
 
   const qDebounceRef = useRef<number | null>(null)
+  const suppressParamsLoadRef = useRef(false)
 
   useEffect(() => {
+    if (!searchParams.get('view')) {
+      const params = new URLSearchParams(searchParams)
+      params.set('view', 'dashboard')
+      setSearchParams(params, { replace: true })
+      return
+    }
+
     const nextQ = searchParams.get('q') ?? ''
     const nextCategory = searchParams.get('category') ?? ''
     const nextActive = searchParams.get('active') ?? ''
     const nextStatus = searchParams.get('status') ?? ''
+
+    // If the URL changed due to in-page controls, avoid double-loading:
+    // the handlers already triggered the network request (or will, for debounced search).
+    if (suppressParamsLoadRef.current) {
+      suppressParamsLoadRef.current = false
+    } else {
+      const changed = q !== nextQ || category !== nextCategory || active !== nextActive || status !== nextStatus
+      if (changed) {
+        const { query } = buildQuery({ q: nextQ, category: nextCategory, active: nextActive, status: nextStatus })
+        void loadTasks(query)
+      }
+    }
 
     if (q !== nextQ) setQ(nextQ)
     if (category !== nextCategory) setCategory(nextCategory)
@@ -82,6 +100,7 @@ export function TasksListPage() {
     if (enforcedStatus) enforcedActive = 'true'
 
     const params = new URLSearchParams()
+    params.set('view', view ?? 'dashboard')
     if (merged.q.trim()) params.set('q', merged.q.trim())
     if (merged.category.trim()) params.set('category', merged.category.trim())
     if (enforcedActive === 'true' || enforcedActive === 'false') params.set('active', enforcedActive)
@@ -102,12 +121,14 @@ export function TasksListPage() {
       qDebounceRef.current = null
     }
     const { query, params } = buildQuery(next)
+    suppressParamsLoadRef.current = true
     setSearchParams(params, { replace: true })
     void loadTasks(query)
   }
 
   function applyDebouncedQ(nextQ: string) {
     const { query, params } = buildQuery({ q: nextQ })
+    suppressParamsLoadRef.current = true
     setSearchParams(params, { replace: true })
     if (qDebounceRef.current) window.clearTimeout(qDebounceRef.current)
     qDebounceRef.current = window.setTimeout(() => {
@@ -124,146 +145,42 @@ export function TasksListPage() {
   }, [])
 
   return (
-    <main className="min-h-dvh px-6 py-10">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <DashboardHeader
-          title="Tasks"
-          subtitle={`${items.length} total · ${activeCount} active`}
-          username={user?.username}
-          overdue={overdueCount}
-          dueSoon={dueSoonCount}
-          active={activeCount}
-          onBack={() => navigate('/')}
-          onLogout={() => void logout().then(() => navigate('/'))}
-        />
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
+          <div className="text-sm font-medium text-slate-700">Overdue</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-rose-600">{overdueCount}</div>
+          <div className="mt-1 text-sm text-slate-500">Needs attention</div>
+        </Card>
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
+          <div className="text-sm font-medium text-slate-700">Due Soon</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-amber-600">{dueSoonCount}</div>
+          <div className="mt-1 text-sm text-slate-500">Next 7 days</div>
+        </Card>
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
+          <div className="text-sm font-medium text-slate-700">Active Tasks</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{activeCount}</div>
+          <div className="mt-1 text-sm text-slate-500">{items.length} total</div>
+        </Card>
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
+          <div className="text-sm font-medium text-slate-700">Completed</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">0</div>
+          <div className="mt-1 text-sm text-slate-500">This month (placeholder)</div>
+        </Card>
+      </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="primary" onClick={() => navigate('/tasks/new')}>
-            New Task
-          </Button>
-        </div>
-
-        <Card className="p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-slate-200">Filters</div>
-              <div className="mt-1 text-sm text-slate-400">Search and narrow down your tasks. Filters persist in the URL.</div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-1">
-                <label htmlFor="taskSearch" className="text-sm text-slate-400">
-                  Search
-                </label>
-                <input
-                  id="taskSearch"
-                  name="taskSearch"
-                  type="text"
-                  value={q}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    setQ(next)
-                    applyDebouncedQ(next)
-                  }}
-                  placeholder="Title or description…"
-                  className={[
-                    'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                    'border-slate-700 placeholder:text-slate-500',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                  ].join(' ')}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="categoryFilter" className="text-sm text-slate-400">
-                  Category
-                </label>
-                <select
-                  id="categoryFilter"
-                  name="categoryFilter"
-                  value={category}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    setCategory(next)
-                    applyImmediate({ category: next })
-                  }}
-                  disabled={!categoriesReady}
-                  className={[
-                    'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                    'border-slate-700',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                  ].join(' ')}
-                >
-                  <option value="">All</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="activeFilter" className="text-sm text-slate-400">
-                  Active
-                </label>
-                <select
-                  id="activeFilter"
-                  name="activeFilter"
-                  value={active}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    setActive(next)
-                    if (next === 'false') setStatus('')
-                    applyImmediate({ active: next, status: next === 'false' ? '' : status })
-                  }}
-                  className={[
-                    'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                    'border-slate-700',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                  ].join(' ')}
-                >
-                  <option value="">All</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="statusFilter" className="text-sm text-slate-400">
-                  Status
-                </label>
-                <select
-                  id="statusFilter"
-                  name="statusFilter"
-                  value={status}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    setStatus(next)
-                    if (next) setActive('true')
-                    applyImmediate({ status: next, active: next ? 'true' : active })
-                  }}
-                  disabled={active === 'false'}
-                  className={[
-                    'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                    'border-slate-700',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                    active === 'false' ? 'opacity-60' : '',
-                  ].join(' ')}
-                >
-                  <option value="">All</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="dueSoon">Due soon</option>
-                  <option value="upcoming">Upcoming</option>
-                </select>
-              </div>
-            </div>
+      <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900">{view === 'all' ? 'All Tasks' : 'Dashboard'} filters</div>
+            <div className="mt-1 text-sm text-slate-600">Search and narrow down your tasks. Filters persist in the URL.</div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="ghost"
+              tone="light"
               onClick={() => {
                 setQ('')
                 setCategory('')
@@ -275,43 +192,161 @@ export function TasksListPage() {
               Clear filters
             </Button>
           </div>
-        </Card>
+        </div>
 
-        {error ? (
-          <div role="alert" className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">{error}</div>
-              <Button type="button" variant="ghost" onClick={() => setError(null)}>
-                Dismiss
-              </Button>
-            </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <label htmlFor="taskSearch" className="text-sm font-medium text-slate-700">
+              Search
+            </label>
+            <input
+              id="taskSearch"
+              name="taskSearch"
+              type="text"
+              value={q}
+              onChange={(e) => {
+                const next = e.target.value
+                setQ(next)
+                applyDebouncedQ(next)
+              }}
+              placeholder="Title or description…"
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200 placeholder:text-slate-400',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+              ].join(' ')}
+            />
           </div>
-        ) : null}
 
-        <TaskList
-          items={items}
-          loading={loading}
-          onRefresh={() => {
+          <div className="space-y-1">
+            <label htmlFor="categoryFilter" className="text-sm font-medium text-slate-700">
+              Category
+            </label>
+            <select
+              id="categoryFilter"
+              name="categoryFilter"
+              value={category}
+              onChange={(e) => {
+                const next = e.target.value
+                setCategory(next)
+                applyImmediate({ category: next })
+              }}
+              disabled={!categoriesReady}
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                !categoriesReady ? 'opacity-70' : '',
+              ].join(' ')}
+            >
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="activeFilter" className="text-sm font-medium text-slate-700">
+              Active
+            </label>
+            <select
+              id="activeFilter"
+              name="activeFilter"
+              value={active}
+              onChange={(e) => {
+                const next = e.target.value
+                setActive(next)
+                if (next === 'false') setStatus('')
+                applyImmediate({ active: next, status: next === 'false' ? '' : status })
+              }}
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+              ].join(' ')}
+            >
+              <option value="">All</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="statusFilter" className="text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              id="statusFilter"
+              name="statusFilter"
+              value={status}
+              onChange={(e) => {
+                const next = e.target.value
+                setStatus(next)
+                if (next) setActive('true')
+                applyImmediate({ status: next, active: next ? 'true' : active })
+              }}
+              disabled={active === 'false'}
+              className={[
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                active === 'false' ? 'opacity-60' : '',
+              ].join(' ')}
+            >
+              <option value="">All</option>
+              <option value="overdue">Overdue</option>
+              <option value="dueSoon">Due soon</option>
+              <option value="upcoming">Upcoming</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {error ? (
+        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">{error}</div>
+            <Button
+              type="button"
+              variant="ghost"
+              tone="light"
+              className="border-rose-200 text-rose-800 hover:bg-rose-100 focus-visible:ring-offset-rose-50"
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <TaskList
+        items={items}
+        loading={loading}
+        onNewTask={() => navigate('/tasks/new')}
+        onRefresh={() => {
+          const { query } = buildQuery()
+          void loadTasks(query)
+        }}
+        onCompleteTask={completeTask}
+        onFetchCompletions={fetchCompletions}
+        onEdit={(id) => navigate(`/tasks/${id}/edit`)}
+        onDelete={async (id) => {
+          const task = items.find((t) => t._id === id)
+          const ok = window.confirm(`Delete task “${task?.title ?? 'this task'}”?`)
+          if (!ok) return
+          try {
             const { query } = buildQuery()
-            void loadTasks(query)
-          }}
-          onCompleteTask={completeTask}
-          onFetchCompletions={fetchCompletions}
-          onEdit={(id) => navigate(`/tasks/${id}/edit`)}
-          onDelete={async (id) => {
-            const task = items.find((t) => t._id === id)
-            const ok = window.confirm(`Delete task “${task?.title ?? 'this task'}”?`)
-            if (!ok) return
-            try {
-              await deleteTask(id)
-              await loadTasks()
-            } catch (e) {
-              setError(e instanceof Error ? e.message : 'Failed to delete task')
-            }
-          }}
-        />
-      </div>
-    </main>
+            await deleteTask(id)
+            await loadTasks(query)
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to delete task')
+          }
+        }}
+      />
+    </div>
   )
 }
 

@@ -1,6 +1,5 @@
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { TextareaField, TextField } from '../../components/Field'
 
 export type TaskDraft = {
   title: string
@@ -15,7 +14,7 @@ export function CreateTaskCard(props: {
   draft: TaskDraft
   onDraftChange: (next: TaskDraft) => void
   onSubmit: () => void
-  onClear: () => void
+  onCancel?: () => void
   submitting: boolean
   titleError: string | null
   intervalError: string | null
@@ -26,38 +25,66 @@ export function CreateTaskCard(props: {
   normalizeCategory: (value: string) => string
 }) {
   return (
-    <Card className="p-6">
+    <Card className="rounded-2xl border-slate-200 bg-white p-6 shadow-sm shadow-black/5 backdrop-blur-none hover:border-slate-200">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-medium text-slate-100">Create Task</h2>
-          <p className="mt-1 text-sm text-slate-400">Add a recurring responsibility to your list.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Create Task</h2>
+          <p className="mt-1 text-sm text-slate-600">Add a recurring responsibility to your list.</p>
         </div>
       </div>
 
       <div className="mt-6 space-y-4">
-        <TextField
-          label="Title"
-          name="title"
-          value={props.draft.title}
-          onChange={(value) => props.onDraftChange({ ...props.draft, title: value })}
-          placeholder="Replace HVAC filter"
-          autoComplete="off"
-          required
-          error={props.titleError}
-        />
+        <div className="space-y-1">
+          <label htmlFor="title" className="text-sm font-medium text-slate-700">
+            Title
+          </label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            value={props.draft.title}
+            onChange={(e) => props.onDraftChange({ ...props.draft, title: e.target.value })}
+            placeholder="Replace HVAC filter"
+            autoComplete="off"
+            required
+            aria-invalid={Boolean(props.titleError) || undefined}
+            className={[
+              'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+              props.titleError ? 'border-rose-300' : 'border-slate-200',
+              'placeholder:text-slate-400',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+            ].join(' ')}
+          />
+          {props.titleError ? (
+            <p className="text-sm text-rose-700" role="alert">
+              {props.titleError}
+            </p>
+          ) : null}
+        </div>
 
-        <TextareaField
-          label="Description"
-          name="description"
-          value={props.draft.description}
-          onChange={(value) => props.onDraftChange({ ...props.draft, description: value })}
-          placeholder="Notes, steps, parts to buy…"
-          autoComplete="off"
-        />
+        <div className="space-y-1">
+          <label htmlFor="description" className="text-sm font-medium text-slate-700">
+            Description
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            rows={4}
+            value={props.draft.description}
+            onChange={(e) => props.onDraftChange({ ...props.draft, description: e.target.value })}
+            placeholder="Notes, steps, parts to buy…"
+            autoComplete="off"
+            className={[
+              'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+              'border-slate-200 placeholder:text-slate-400',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+            ].join(' ')}
+          />
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2 md:items-end">
           <div className="space-y-1">
-            <label htmlFor="category" className="text-sm text-slate-400">
+            <label htmlFor="category" className="text-sm font-medium text-slate-700">
               Category
             </label>
             <select
@@ -68,9 +95,10 @@ export function CreateTaskCard(props: {
               disabled={!props.categoriesReady}
               required
               className={[
-                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                'border-slate-700',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                !props.categoriesReady ? 'opacity-70' : '',
               ].join(' ')}
             >
               {props.categories.map((c) => (
@@ -80,14 +108,14 @@ export function CreateTaskCard(props: {
               ))}
             </select>
             {props.categoriesError ? (
-              <p className="text-sm text-rose-300" role="alert">
+              <p className="text-sm text-rose-700" role="alert">
                 {props.categoriesError}
               </p>
             ) : null}
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="startDate" className="text-sm text-slate-400">
+            <label htmlFor="startDate" className="text-sm font-medium text-slate-700">
               Start date
             </label>
             <input
@@ -98,14 +126,13 @@ export function CreateTaskCard(props: {
               onChange={(e) => props.onDraftChange({ ...props.draft, startDate: e.target.value })}
               required
               className={[
-                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                'border-slate-700',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                props.startDateError ? 'border-rose-500/40' : '',
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                props.startDateError ? 'border-rose-300' : 'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
               ].join(' ')}
             />
             {props.startDateError ? (
-              <p className="text-sm text-rose-300" role="alert">
+              <p className="text-sm text-rose-700" role="alert">
                 {props.startDateError}
               </p>
             ) : null}
@@ -114,7 +141,7 @@ export function CreateTaskCard(props: {
 
         <div className="grid gap-4 md:grid-cols-2 md:items-end">
           <div className="space-y-1">
-            <label htmlFor="frequencyUnit" className="text-sm text-slate-400">
+            <label htmlFor="frequencyUnit" className="text-sm font-medium text-slate-700">
               Frequency
             </label>
             <select
@@ -126,9 +153,9 @@ export function CreateTaskCard(props: {
               }
               required
               className={[
-                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                'border-slate-700',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
               ].join(' ')}
             >
               <option value="weekly">Weekly</option>
@@ -138,7 +165,7 @@ export function CreateTaskCard(props: {
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="frequencyInterval" className="text-sm text-slate-400">
+            <label htmlFor="frequencyInterval" className="text-sm font-medium text-slate-700">
               Interval
             </label>
             <input
@@ -157,14 +184,13 @@ export function CreateTaskCard(props: {
               }
               required
               className={[
-                'w-full rounded-xl border bg-slate-800 px-3 py-2 text-sm text-slate-200',
-                'border-slate-700',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
-                props.intervalError ? 'border-rose-500/40' : '',
+                'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900',
+                props.intervalError ? 'border-rose-300' : 'border-slate-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
               ].join(' ')}
             />
             {props.intervalError ? (
-              <p className="text-sm text-rose-300" role="alert">
+              <p className="text-sm text-rose-700" role="alert">
                 {props.intervalError}
               </p>
             ) : null}
@@ -172,16 +198,19 @@ export function CreateTaskCard(props: {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">
+          {props.onCancel ? (
+            <Button type="button" variant="ghost" tone="light" onClick={props.onCancel} disabled={props.submitting}>
+              Cancel
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="primary"
+            tone="light"
             disabled={props.submitting || !props.categoriesReady}
             onClick={props.onSubmit}
           >
             {props.submitting ? 'Creating…' : 'Create'}
-          </Button>
-          <Button type="button" variant="ghost" onClick={props.onClear} disabled={props.submitting}>
-            Clear
           </Button>
         </div>
       </div>

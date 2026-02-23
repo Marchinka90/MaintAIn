@@ -70,42 +70,39 @@ export function CreateTaskPage() {
   }
 
   return (
-    <main className="min-h-dvh px-6 py-10">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-100">New Task</h1>
-            <p className="mt-2 text-sm text-slate-400">Create a task you want to keep on a schedule.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="ghost" onClick={() => navigate('/tasks')}>
-              Back to tasks
-            </Button>
-          </div>
-        </header>
-
-        <CreateTaskCard
-          draft={draft}
-          onDraftChange={setDraft}
-          onSubmit={() => void onSubmit()}
-          onClear={() => setDraft(emptyDraft())}
-          submitting={submitting}
-          titleError={titleError}
-          intervalError={intervalError}
-          startDateError={startDateError}
-          categories={categories}
-          categoriesReady={categoriesReady}
-          categoriesError={categoriesError}
-          normalizeCategory={normalizeCategory}
-        />
-
-        {error ? (
-          <div role="alert" className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
-            {error}
-          </div>
-        ) : null}
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          tone="light"
+          onClick={() => navigate('/tasks')}
+        >
+          Back to tasks
+        </Button>
       </div>
-    </main>
+
+      <CreateTaskCard
+        draft={draft}
+        onDraftChange={setDraft}
+        onSubmit={() => void onSubmit()}
+        onCancel={() => navigate('/tasks')}
+        submitting={submitting}
+        titleError={titleError}
+        intervalError={intervalError}
+        startDateError={startDateError}
+        categories={categories}
+        categoriesReady={categoriesReady}
+        categoriesError={categoriesError}
+        normalizeCategory={normalizeCategory}
+      />
+
+      {error ? (
+        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+          {error}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

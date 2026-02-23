@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
+import { AppLayout } from './layout/AppLayout'
 import { CreateTaskPage } from './pages/tasks/CreateTaskPage'
 import { EditTaskPage } from './pages/tasks/EditTaskPage'
 import { TasksListPage } from './pages/tasks/TasksListPage'
@@ -26,29 +27,16 @@ export default function App() {
       <Route path="/" element={<LandingRoute />} />
       <Route path="/login" element={<LoginRoute />} />
       <Route
-        path="/tasks"
         element={
           <RequireAuth>
-            <TasksListPage />
+            <AppLayout />
           </RequireAuth>
         }
-      />
-      <Route
-        path="/tasks/new"
-        element={
-          <RequireAuth>
-            <CreateTaskPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/tasks/:id/edit"
-        element={
-          <RequireAuth>
-            <EditTaskPage />
-          </RequireAuth>
-        }
-      />
+      >
+        <Route path="/tasks" element={<TasksListPage />} />
+        <Route path="/tasks/new" element={<CreateTaskPage />} />
+        <Route path="/tasks/:id/edit" element={<EditTaskPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
